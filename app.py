@@ -1,9 +1,8 @@
-from rich.align import Align
-from rich.padding import Padding
-from rich.panel import Panel
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical, Horizontal
 from textual.widgets import Static, Footer, Input, Markdown
+
+from src.claude_agent import stream_helpful_claude
 
 
 def get_user_message(message: str) -> str:
@@ -82,9 +81,18 @@ class MyApp(App):
         self.query_one(Input).value = ""
         self.query_one(VerticalScroll).mount(UserMessageBubble(event.value))
         self.query_one(VerticalScroll).mount(
-            RightAligned(SystemMessageBubble("Still working on this!"))
+            RightAlignted(SystemMessageBubble("Thinking...", id="loading"))
         )
+        self.run_worker(self.get_response(event.value))
         self.query_one(VerticalScroll).scroll_end(animate=True)
+
+    async def get_response(self, text: str) -> None:
+        self.query_one("#loading").remove()
+        messages = await run_helpful_claude(text)
+        for message in messages:
+            self.query_one(VerticalScroll).mount(
+                RightAligned(SystemMessageBubble(message))
+            )
 
 
 if __name__ == "__main__":
