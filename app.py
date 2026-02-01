@@ -68,7 +68,7 @@ class MyApp(App):
 
     def write_user_message(self, message: str) -> None:
         log = self.query_one(RichLog)
-        log.write(Panel(RichMarkdown(message), title="You", border_style="bright_blue"))
+        log.write(Panel(RichMarkdown(message), title="You", border_style="dodger_blue1"))
 
     def write_system_message(self, message: str) -> None:
         log = self.query_one(RichLog)
