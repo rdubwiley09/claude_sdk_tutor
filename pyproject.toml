@@ -1,6 +1,6 @@
 [project]
-name = "claude-tutor"
-version = "0.1.0"
+name = "claude-sdk-tutor"
+version = "0.1.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-claude_tutor = "app:main"
+claude_sdk_tutor = "app:main"
 
 [build-system]
 requires = ["hatchling"]
