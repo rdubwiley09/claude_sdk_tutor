@@ -1,45 +1,26 @@
+import json
+
+from claude_agent_sdk import AssistantMessage, ResultMessage
+from rich.markdown import Markdown as RichMarkdown
+from rich.panel import Panel
 from textual.app import App, ComposeResult
-from textual.containers import VerticalScroll, Vertical, Horizontal
-from textual.widgets import Static, Footer, Input, Markdown
+from textual.containers import Vertical
+from textual.widgets import Static, Footer, Input, RichLog, LoadingIndicator
 
-from src.claude_agent import stream_helpful_claude
-
-
-def get_user_message(message: str) -> str:
-    return f"""
-## User Message:
-### {message}
-"""
-
-
-def get_system_message(message: str) -> str:
-    return f"""
-## System Message:
-### {message}
-"""
-
-
-class RightAligned(Horizontal):
-    DEFAULT_CSS = """
-    RightAligned{
-        align: right top;
-    }
-    """
-
-
-class UserMessageBubble(Markdown):
-    def __init__(self, message: str) -> None:
-        super().__init__(get_user_message(message))
-
-
-class SystemMessageBubble(Markdown):
-    def __init__(self, message: str) -> None:
-        super().__init__(get_system_message(message))
+from claude.claude_agent import connect_client, create_claude_client, stream_helpful_claude
 
 
 class MyApp(App):
+    def __init__(self):
+        super().__init__()
+        self.client = create_claude_client()
+
     CSS = """
+    #main {
+        height: 100%;
+    }
     Input {
+        height: auto;
         margin-top: 1;
         margin-left: 3;
         margin-right: 3;
@@ -49,50 +30,75 @@ class MyApp(App):
         content-align: center middle;
         width: 100%;
         margin-top: 1;
+        margin-bottom: 1;
+        height: auto;
     }
-    VerticalScroll {
+    RichLog {
         background: $boost;
         margin-left: 3;
         margin-right: 3;
+        height: 1fr;
     }
-    UserMessageBubble {
-        width: 80%;
-        content-align: left top;
-        padding-left: 1;
+    LoadingIndicator {
+        height: auto;
         margin-left: 3;
-        border: heavy green;
+        margin-right: 3;
     }
-    SystemMessageBubble {
-        width: 80%;
-        align: right top;
-        padding-left: 1;
-        margin-left: 3;
-        border: heavy blue; 
-    }    
     """
 
     def compose(self) -> ComposeResult:
-        yield Static("Welcome to the helper!", id="header")
-        yield VerticalScroll()
-        yield Input()
+        with Vertical(id="main"):
+            yield Static("Welcome to the helper!", id="header")
+            yield RichLog(markup=True, highlight=True)
+            yield LoadingIndicator(id="spinner")
+            yield Input()
         yield Footer()
+
+    async def on_mount(self) -> None:
+        self.query_one("#spinner", LoadingIndicator).display = False
+        await connect_client(self.client)
+
+    def write_user_message(self, message: str) -> None:
+        log = self.query_one(RichLog)
+        log.write(Panel(RichMarkdown(message), title="You", border_style="bright_blue"))
+
+    def write_system_message(self, message: str) -> None:
+        log = self.query_one(RichLog)
+        log.write(Panel(RichMarkdown(message), title="Claude", border_style="red"))
+
+    def write_tool_message(self, name: str, input: dict) -> None:
+        log = self.query_one(RichLog)
+        input_str = json.dumps(input, indent=2)
+        content = f"**{name}**\n```json\n{input_str}\n```"
+        log.write(Panel(RichMarkdown(content), title="Tool", border_style="grey50"))
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         self.query_one(Input).value = ""
-        self.query_one(VerticalScroll).mount(UserMessageBubble(event.value))
-        self.query_one(VerticalScroll).mount(
-            RightAlignted(SystemMessageBubble("Thinking...", id="loading"))
-        )
+        if event.value.strip() == "/clear":
+            self.run_worker(self.clear_conversation())
+            return
+        self.write_user_message(event.value)
+        self.query_one("#spinner", LoadingIndicator).display = True
         self.run_worker(self.get_response(event.value))
-        self.query_one(VerticalScroll).scroll_end(animate=True)
+
+    async def clear_conversation(self) -> None:
+        self.query_one(RichLog).clear()
+        self.client = create_claude_client()
+        await connect_client(self.client)
 
     async def get_response(self, text: str) -> None:
-        self.query_one("#loading").remove()
-        messages = await run_helpful_claude(text)
-        for message in messages:
-            self.query_one(VerticalScroll).mount(
-                RightAligned(SystemMessageBubble(message))
-            )
+        try:
+            async for message in stream_helpful_claude(self.client, text):
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if hasattr(block, "text"):
+                            self.write_system_message(block.text)
+                        elif hasattr(block, "name"):
+                            self.write_tool_message(block.name, getattr(block, "input", {}))
+                elif isinstance(message, ResultMessage):
+                    pass  # Might want to add logging later
+        finally:
+            self.query_one("#spinner", LoadingIndicator).display = False
 
 
 if __name__ == "__main__":
