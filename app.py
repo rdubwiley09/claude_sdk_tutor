@@ -18,7 +18,10 @@ class MyApp(App):
     def __init__(self):
         super().__init__()
         self.tutor_mode = True
-        self.client = create_claude_client(tutor_mode=self.tutor_mode)
+        self.web_search_enabled = False
+        self.client = create_claude_client(
+            tutor_mode=self.tutor_mode, web_search=self.web_search_enabled
+        )
 
     CSS = """
     #main {
@@ -90,23 +93,40 @@ class MyApp(App):
         if command == "/tutor":
             self.run_worker(self.toggle_tutor_mode())
             return
+        if command == "/togglewebsearch":
+            self.run_worker(self.toggle_web_search())
+            return
         self.write_user_message(event.value)
         self.query_one("#spinner", LoadingIndicator).display = True
         self.run_worker(self.get_response(event.value))
 
     async def clear_conversation(self) -> None:
         self.query_one(RichLog).clear()
-        self.client = create_claude_client(tutor_mode=self.tutor_mode)
+        self.client = create_claude_client(
+            tutor_mode=self.tutor_mode, web_search=self.web_search_enabled
+        )
         await connect_client(self.client)
         self.write_slash_message("Context cleared")
 
     async def toggle_tutor_mode(self) -> None:
         self.tutor_mode = not self.tutor_mode
         self.query_one(RichLog).clear()
-        self.client = create_claude_client(tutor_mode=self.tutor_mode)
+        self.client = create_claude_client(
+            tutor_mode=self.tutor_mode, web_search=self.web_search_enabled
+        )
         await connect_client(self.client)
         status = "on" if self.tutor_mode else "off"
         self.write_slash_message(f"Tutor mode {status}")
+
+    async def toggle_web_search(self) -> None:
+        self.web_search_enabled = not self.web_search_enabled
+        self.query_one(RichLog).clear()
+        self.client = create_claude_client(
+            tutor_mode=self.tutor_mode, web_search=self.web_search_enabled
+        )
+        await connect_client(self.client)
+        status = "on" if self.web_search_enabled else "off"
+        self.write_slash_message(f"Web search {status}")
 
     async def get_response(self, text: str) -> None:
         try:

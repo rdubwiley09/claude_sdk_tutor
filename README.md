@@ -49,8 +49,9 @@ Type your programming questions in the input field and press Enter to send. Clau
 
 | Command | Description |
 |---------|-------------|
-| `/clear` | Clears the conversation history and starts fresh. Your tutor mode setting is preserved. |
+| `/clear` | Clears the conversation history and starts fresh. Your settings are preserved. |
 | `/tutor` | Toggles tutor mode on/off. When on (default), Claude acts as a teacher. When off, Claude responds normally without the tutoring constraints. |
+| `/togglewebsearch` | Toggles web search on/off. When on, Claude can use WebSearch and WebFetch tools to look up information online. Disabled by default. |
 
 ## Tech Stack
 

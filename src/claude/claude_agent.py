@@ -12,8 +12,13 @@ When a user asks a question:
 Never write complete solutions for them. Instead, help them develop the skills to solve problems independently."""
 
 
-def create_claude_client(tutor_mode: bool = True) -> ClaudeSDKClient:
-    options = ClaudeAgentOptions(allowed_tools=["Read", "Glob", "Grep"])
+def create_claude_client(
+    tutor_mode: bool = True, web_search: bool = False
+) -> ClaudeSDKClient:
+    tools = ["Read", "Glob", "Grep"]
+    if web_search:
+        tools.extend(["WebSearch", "WebFetch"])
+    options = ClaudeAgentOptions(allowed_tools=tools)
     if tutor_mode:
         options.system_prompt = TUTOR_SYSTEM_PROMPT
     return ClaudeSDKClient(options=options)
