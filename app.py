@@ -53,7 +53,7 @@ class MyApp(App):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="main"):
-            yield Static("Welcome to claude tutor!", id="header")
+            yield Static("Welcome to claude SDK tutor!", id="header")
             yield RichLog(markup=True, highlight=True)
             yield LoadingIndicator(id="spinner")
             yield Input()
