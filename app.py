@@ -96,6 +96,9 @@ class MyApp(App):
         if command == "/togglewebsearch":
             self.run_worker(self.toggle_web_search())
             return
+        if command == "/help":
+            self.show_help()
+            return
         self.write_user_message(event.value)
         self.query_one("#spinner", LoadingIndicator).display = True
         self.run_worker(self.get_response(event.value))
@@ -127,6 +130,15 @@ class MyApp(App):
         await connect_client(self.client)
         status = "on" if self.web_search_enabled else "off"
         self.write_slash_message(f"Web search {status}")
+
+    def show_help(self) -> None:
+        help_text = """**Available Commands**
+
+- `/help` - Show this help message
+- `/clear` - Clear conversation history and start fresh
+- `/tutor` - Toggle tutor mode on/off (guides learning vs gives code)
+- `/togglewebsearch` - Toggle web search on/off (allows online lookups)"""
+        self.write_slash_message(help_text)
 
     async def get_response(self, text: str) -> None:
         try:
