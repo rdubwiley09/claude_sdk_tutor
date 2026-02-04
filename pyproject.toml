@@ -1,11 +1,12 @@
 [project]
 name = "claude-sdk-tutor"
-version = "0.1.4"
+version = "0.1.5"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "claude-agent-sdk>=0.1.26",
+    "platformdirs>=4.0.0",
     "textual>=7.5.0",
     "textual-dev>=1.8.0",
     "watchfiles>=1.1.1",

@@ -12,6 +12,8 @@ from claude.claude_agent import (
     create_claude_client,
     stream_helpful_claude,
 )
+from claude.history import CommandHistory
+from claude.widgets import HistoryInput
 
 
 class MyApp(App):
@@ -22,6 +24,7 @@ class MyApp(App):
         self.client = create_claude_client(
             tutor_mode=self.tutor_mode, web_search=self.web_search_enabled
         )
+        self.history = CommandHistory()
 
     CSS = """
     #main {
@@ -59,7 +62,7 @@ class MyApp(App):
             yield Static("Welcome to claude SDK tutor!", id="header")
             yield RichLog(markup=True, highlight=True)
             yield LoadingIndicator(id="spinner")
-            yield Input()
+            yield HistoryInput(history=self.history)
         yield Footer()
 
     async def on_mount(self) -> None:
@@ -85,8 +88,10 @@ class MyApp(App):
         log.write(Panel(RichMarkdown(message), title="Slash", border_style="green"))
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        self.query_one(Input).value = ""
         command = event.value.strip()
+        self.query_one(HistoryInput).value = ""
+        if command:
+            self.history.add(command)
         if command == "/clear":
             self.run_worker(self.clear_conversation())
             return
