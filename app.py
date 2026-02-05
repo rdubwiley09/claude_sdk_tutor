@@ -11,7 +11,8 @@ from rich.markdown import Markdown as RichMarkdown
 from rich.panel import Panel
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
-from textual.widgets import Static, Footer, Input, RichLog, LoadingIndicator
+from rich.box import ROUNDED
+from textual.widgets import Static, Footer, Input, RichLog
 
 from claude.claude_agent import (
     connect_client,
@@ -21,10 +22,21 @@ from claude.claude_agent import (
 from claude.history import CommandHistory
 from claude.mcp_commands import McpAsyncCommand, McpCommandHandler
 from claude.mcp_config import McpConfigManager
-from claude.widgets import HistoryInput
+from claude.widgets import ASCIISpinner, HistoryInput, StatusBar
+
+
+# Message border colors (vivid)
+USER_COLOR = "#00aaff"      # Vivid cyan-blue
+CLAUDE_COLOR = "#ff3333"    # Vivid red
+TOOL_COLOR = "#cccccc"      # Bright grey
+SYSTEM_COLOR = "#33ff66"    # Vivid green
+
+HEADER_TEXT = "Claude SDK Tutor"
 
 
 class MyApp(App):
+    CSS_PATH = "phosphor.tcss"
+
     def __init__(self):
         super().__init__()
         self.tutor_mode = True
@@ -44,66 +56,71 @@ class MyApp(App):
             mcp_servers=self.mcp_config.get_enabled_servers_for_sdk(),
         )
 
-    CSS = """
-    #main {
-        height: 100%;
-    }
-    Input {
-        height: auto;
-        margin-top: 1;
-        margin-left: 3;
-        margin-right: 3;
-        margin-bottom: 1;
-    }
-    #header {
-        content-align: center middle;
-        width: 100%;
-        margin-top: 1;
-        margin-bottom: 1;
-        height: auto;
-    }
-    RichLog {
-        background: $boost;
-        margin-left: 3;
-        margin-right: 3;
-        height: 1fr;
-    }
-    LoadingIndicator {
-        height: auto;
-        margin-left: 3;
-        margin-right: 3;
-    }
-    """
-
     def compose(self) -> ComposeResult:
         with Vertical(id="main"):
-            yield Static("Welcome to claude SDK tutor!", id="header")
+            yield Static(HEADER_TEXT, id="header")
+            yield StatusBar(id="status-bar")
             yield RichLog(markup=True, highlight=True)
-            yield LoadingIndicator(id="spinner")
-            yield HistoryInput(history=self.history)
+            yield ASCIISpinner(id="spinner")
+            yield HistoryInput(
+                history=self.history,
+                placeholder="Type a message or /help for commands...",
+            )
         yield Footer()
 
     async def on_mount(self) -> None:
-        self.query_one("#spinner", LoadingIndicator).display = False
+        self.query_one("#spinner", ASCIISpinner).display = False
+        self._update_status_bar()
         await connect_client(self.client)
+
+    def _update_status_bar(self) -> None:
+        """Update the status bar with current mode states."""
+        status_bar = self.query_one("#status-bar", StatusBar)
+        status_bar.tutor_on = self.tutor_mode
+        status_bar.web_on = self.web_search_enabled
+        status_bar.mcp_count = len(self.mcp_config.get_enabled_servers_for_sdk())
 
     def write_user_message(self, message: str) -> None:
         log = self.query_one(RichLog)
-        log.write(Panel(RichMarkdown(message), title="You", border_style="dodger_blue1"))
+        log.write(Panel(
+            RichMarkdown(message),
+            title="You",
+            border_style=USER_COLOR,
+            box=ROUNDED,
+            padding=(1, 2),
+        ))
 
     def write_system_message(self, message: str) -> None:
         log = self.query_one(RichLog)
-        log.write(Panel(RichMarkdown(message), title="Claude", border_style="red"))
+        log.write(Panel(
+            RichMarkdown(message),
+            title="Claude",
+            border_style=CLAUDE_COLOR,
+            box=ROUNDED,
+            padding=(1, 2),
+        ))
 
     def write_tool_message(self, name: str, input: dict) -> None:
         log = self.query_one(RichLog)
         input_str = json.dumps(input, indent=2)
         content = f"**{name}**\n```json\n{input_str}\n```"
-        log.write(Panel(RichMarkdown(content), title="Tool", border_style="grey50"))
+        log.write(Panel(
+            RichMarkdown(content),
+            title="Tool",
+            border_style=TOOL_COLOR,
+            box=ROUNDED,
+            padding=(1, 2),
+        ))
 
     def write_slash_message(self, message: str) -> None:
         log = self.query_one(RichLog)
-        log.write(Panel(RichMarkdown(message), title="Slash", border_style="green"))
+        log.write(Panel(
+            RichMarkdown(message),
+            title="System",
+            border_style=SYSTEM_COLOR,
+            box=ROUNDED,
+            padding=(1, 2),
+        ))
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         command = event.value.strip()
@@ -136,7 +153,7 @@ class MyApp(App):
             self._handle_mcp_command(command)
             return
         self.write_user_message(event.value)
-        self.query_one("#spinner", LoadingIndicator).display = True
+        self.query_one("#spinner", ASCIISpinner).start("Processing query...")
         self._query_running = True
         self.run_worker(self.get_response(event.value))
 
@@ -144,6 +161,7 @@ class MyApp(App):
         self.query_one(RichLog).clear()
         self.client = self._create_client()
         await connect_client(self.client)
+        self._update_status_bar()
         self.write_slash_message("Context cleared")
 
     async def toggle_tutor_mode(self) -> None:
@@ -151,7 +169,8 @@ class MyApp(App):
         self.query_one(RichLog).clear()
         self.client = self._create_client()
         await connect_client(self.client)
-        status = "on" if self.tutor_mode else "off"
+        self._update_status_bar()
+        status = "enabled" if self.tutor_mode else "disabled"
         self.write_slash_message(f"Tutor mode {status}")
 
     async def toggle_web_search(self) -> None:
@@ -159,7 +178,8 @@ class MyApp(App):
         self.query_one(RichLog).clear()
         self.client = self._create_client()
         await connect_client(self.client)
-        status = "on" if self.web_search_enabled else "off"
+        self._update_status_bar()
+        status = "enabled" if self.web_search_enabled else "disabled"
         self.write_slash_message(f"Web search {status}")
 
     def show_help(self) -> None:
@@ -183,7 +203,7 @@ class MyApp(App):
             )
         elif isinstance(result, McpAsyncCommand):
             # Async command needs connection testing
-            self.query_one("#spinner", LoadingIndicator).display = True
+            self.query_one("#spinner", ASCIISpinner).start("Testing MCP connections...")
             self.run_worker(self._test_mcp_connections(result))
         else:
             self.write_slash_message(result)
@@ -236,7 +256,7 @@ class MyApp(App):
         except Exception as e:
             self.write_slash_message(f"**Error** testing MCP connections: {e}")
         finally:
-            self.query_one("#spinner", LoadingIndicator).display = False
+            self.query_one("#spinner", ASCIISpinner).stop()
 
     def _handle_mcp_add_step(self, user_input: str) -> None:
         """Handle a step in the interactive MCP add wizard."""
@@ -330,7 +350,7 @@ class MyApp(App):
                 elif isinstance(message, ResultMessage):
                     pass  # Might want to add logging later
         finally:
-            self.query_one("#spinner", LoadingIndicator).display = False
+            self.query_one("#spinner", ASCIISpinner).stop()
             self._query_running = False
 
     def action_cancel_query(self) -> None:
@@ -347,7 +367,7 @@ class MyApp(App):
             pass  # Ignore errors if not connected or no active query
         finally:
             self._query_running = False
-            self.query_one("#spinner", LoadingIndicator).display = False
+            self.query_one("#spinner", ASCIISpinner).stop()
 
 
 def main():
