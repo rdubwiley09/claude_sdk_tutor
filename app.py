@@ -35,7 +35,117 @@ HEADER_TEXT = "Claude SDK Tutor"
 
 
 class MyApp(App):
-    CSS_PATH = "phosphor.tcss"
+    CSS = """
+    /* Color Variables */
+    $bg-primary: #1a1a1a;
+    $bg-secondary: #242424;
+    $bg-elevated: #2a2a2a;
+    $text-primary: #e0e0e0;
+    $text-muted: #888888;
+    $accent: #5c9fd4;
+    $accent-dim: #4a7fa8;
+    $border: #333333;
+    $border-focus: #555555;
+
+    Screen {
+        background: $bg-primary;
+    }
+
+    #main {
+        height: 100%;
+        background: $bg-primary;
+    }
+
+    #header {
+        content-align: center middle;
+        width: 100%;
+        padding: 1 0;
+        height: auto;
+        color: $text-primary;
+        text-style: bold;
+        background: $bg-primary;
+    }
+
+    #status-bar {
+        content-align: center middle;
+        width: 100%;
+        height: auto;
+        padding-bottom: 1;
+        color: $text-muted;
+        background: $bg-primary;
+    }
+
+    RichLog {
+        background: $bg-secondary;
+        margin-left: 2;
+        margin-right: 2;
+        height: 1fr;
+        border: round $border;
+        scrollbar-color: $border;
+        scrollbar-color-hover: $border-focus;
+        scrollbar-color-active: $accent;
+    }
+
+    #spinner {
+        height: auto;
+        margin-left: 2;
+        margin-right: 2;
+        color: $text-muted;
+        background: $bg-primary;
+    }
+
+    HistoryInput {
+        height: auto;
+        margin-top: 1;
+        margin-left: 2;
+        margin-right: 2;
+        margin-bottom: 1;
+        background: $bg-elevated;
+        color: $text-primary;
+        border: round $border;
+    }
+
+    HistoryInput:focus {
+        border: round $accent-dim;
+    }
+
+    HistoryInput > .input--cursor {
+        color: $bg-primary;
+        background: $accent;
+    }
+
+    HistoryInput > .input--placeholder {
+        color: $text-muted;
+    }
+
+    Footer {
+        background: $bg-secondary;
+        color: $text-muted;
+    }
+
+    Footer > .footer--key {
+        background: $bg-elevated;
+        color: $text-primary;
+    }
+
+    Footer > .footer--description {
+        color: $text-muted;
+    }
+
+    FooterKey {
+        background: $bg-elevated;
+        color: $text-primary;
+    }
+
+    FooterKey:hover {
+        background: $accent-dim;
+        color: $bg-primary;
+    }
+
+    LoadingIndicator {
+        display: none;
+    }
+    """
 
     def __init__(self):
         super().__init__()
