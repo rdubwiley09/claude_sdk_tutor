@@ -13,12 +13,18 @@ Never write complete solutions for them. Instead, help them develop the skills t
 
 
 def create_claude_client(
-    tutor_mode: bool = True, web_search: bool = False
+    tutor_mode: bool = True,
+    web_search: bool = False,
+    mcp_servers: dict | None = None,
 ) -> ClaudeSDKClient:
     tools = ["Read", "Glob", "Grep"]
     if web_search:
         tools.extend(["WebSearch", "WebFetch"])
-    options = ClaudeAgentOptions(allowed_tools=tools)
+    if mcp_servers:
+        # Allow all tools from each configured MCP server
+        for server_name in mcp_servers:
+            tools.append(f"mcp__{server_name}__*")
+    options = ClaudeAgentOptions(allowed_tools=tools, mcp_servers=mcp_servers or {})
     if tutor_mode:
         options.system_prompt = TUTOR_SYSTEM_PROMPT
     return ClaudeSDKClient(options=options)
