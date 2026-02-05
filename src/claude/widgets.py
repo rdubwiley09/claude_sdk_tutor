@@ -10,6 +10,8 @@ class HistoryInput(Input):
     BINDINGS = [
         Binding("up", "history_previous", "Previous command", show=False),
         Binding("down", "history_next", "Next command", show=False),
+        Binding("escape", "app.cancel_query", "Cancel", show=False),
+        Binding("ctrl+c", "app.cancel_query", "Cancel", show=False),
     ]
 
     def __init__(self, history: CommandHistory, **kwargs):

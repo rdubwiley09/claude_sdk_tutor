@@ -34,6 +34,7 @@ class MyApp(App):
         self.mcp_add_state: dict | None = None  # For interactive /mcp add wizard
         self.client = self._create_client()
         self.history = CommandHistory()
+        self._query_running: bool = False  # Track if a query is active
 
     def _create_client(self):
         """Create a new Claude client with current settings."""
@@ -136,6 +137,7 @@ class MyApp(App):
             return
         self.write_user_message(event.value)
         self.query_one("#spinner", LoadingIndicator).display = True
+        self._query_running = True
         self.run_worker(self.get_response(event.value))
 
     async def clear_conversation(self) -> None:
@@ -328,6 +330,23 @@ class MyApp(App):
                 elif isinstance(message, ResultMessage):
                     pass  # Might want to add logging later
         finally:
+            self.query_one("#spinner", LoadingIndicator).display = False
+            self._query_running = False
+
+    def action_cancel_query(self) -> None:
+        """Interrupt the current running query using SDK interrupt."""
+        if self._query_running:
+            self.run_worker(self._interrupt_query())
+
+    async def _interrupt_query(self) -> None:
+        """Send interrupt signal to the Claude SDK client."""
+        try:
+            await self.client.interrupt()
+            self.write_slash_message("Query interrupted.")
+        except Exception:
+            pass  # Ignore errors if not connected or no active query
+        finally:
+            self._query_running = False
             self.query_one("#spinner", LoadingIndicator).display = False
 
 
